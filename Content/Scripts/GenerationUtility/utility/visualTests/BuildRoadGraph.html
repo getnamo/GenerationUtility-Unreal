@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Network Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <h1>Road Network Visualization</h1>
+    <div id="info"></div>
+    <script>
+        const roads = [
+            [{ X: 0, Y: 0, Z: 0 }, { X: 1, Y: 0.5, Z: 0 }, { X: 2, Y: 0, Z: 0 }],
+            [{ X: 2.1, Y: 0, Z: 0 }, { X: 3, Y: 0, Z: 0 }],
+            [{ X: 4, Y: 0, Z: 0 }, { X: 5, Y: 0, Z: 0 }]
+        ];
+
+        function buildRoadNetwork(roads, connectionDistance = 0.5) {
+            const graph = {
+                vertices: [],
+                edges: new Map()
+            };
+
+            function calculateDistance(p1, p2) {
+                return Math.sqrt(
+                    Math.pow(p1.X - p2.X, 2) +
+                    Math.pow(p1.Y - p2.Y, 2) +
+                    Math.pow(p1.Z - p2.Z, 2)
+                );
+            }
+
+            function findOrAddVertex(point) {
+                const existingVertex = graph.vertices.find(
+                    v => v.X === point.X && v.Y === point.Y && v.Z === point.Z
+                );
+                if (existingVertex) return existingVertex;
+
+                graph.vertices.push(point);
+                graph.edges.set(point, []); // Use Map for edges
+                return point;
+            }
+
+            function addEdge(v1, v2) {
+                if (!graph.edges.get(v1).includes(v2)) graph.edges.get(v1).push(v2);
+                if (!graph.edges.get(v2).includes(v1)) graph.edges.get(v2).push(v1);
+            }
+
+            roads.forEach(road => {
+                for (let i = 0; i < road.length; i++) {
+                    const point = findOrAddVertex(road[i]);
+                    if (i > 0) {
+                        const prevPoint = findOrAddVertex(road[i - 1]);
+                        addEdge(point, prevPoint);
+                    }
+                }
+            });
+
+            for (let i = 0; i < graph.vertices.length; i++) {
+                for (let j = i + 1; j < graph.vertices.length; j++) {
+                    if (calculateDistance(graph.vertices[i], graph.vertices[j]) <= connectionDistance) {
+                        addEdge(graph.vertices[i], graph.vertices[j]);
+                    }
+                }
+            }
+
+            function getConnectedComponents() {
+                const visited = new Set();
+                const components = [];
+
+                function dfs(node, component) {
+                    visited.add(node);
+                    component.push(node);
+
+                    for (const neighbor of graph.edges.get(node) || []) {
+                        if (!visited.has(neighbor)) {
+                            dfs(neighbor, component);
+                        }
+                    }
+                }
+
+                for (const vertex of graph.vertices) {
+                    if (!visited.has(vertex)) {
+                        const component = [];
+                        dfs(vertex, component);
+                        components.push(component);
+                    }
+                }
+
+                return components;
+            }
+
+            const components = getConnectedComponents();
+            return {
+                components,
+                graph
+            };
+        }
+
+        const connectionDistance = 0.2; // Adjust this value to test connectivity
+        const { components, graph } = buildRoadNetwork(roads, connectionDistance);
+
+        document.getElementById('info').innerText = `Number of Components: ${components.length}`;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const colors = [
+            0x00ff00, 0xff0000, 0x0000ff, 0xffff00, 0xff00ff
+        ];
+
+        components.forEach((component, index) => {
+            const color = colors[index % colors.length];
+
+            component.forEach(vertex => {
+                const neighbors = graph.edges.get(vertex) || [];
+                neighbors.forEach(neighbor => {
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setFromPoints([
+                        new THREE.Vector3(vertex.X, vertex.Y, vertex.Z),
+                        new THREE.Vector3(neighbor.X, neighbor.Y, neighbor.Z)
+                    ]);
+                    const material = new THREE.LineBasicMaterial({ color });
+                    const line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                });
+            });
+
+            component.forEach(vertex => {
+                const sphereGeometry = new THREE.SphereGeometry(0.025, 16, 16);
+                const sphereMaterial = new THREE.MeshBasicMaterial({ color });
+                const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                sphere.position.set(vertex.X, vertex.Y, vertex.Z);
+                scene.add(sphere);
+            });
+        });
+
+        camera.position.z = 6;
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.update();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

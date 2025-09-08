@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        svg {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <svg id="voronoi"></svg>
+    <script>
+    // Configuration
+	const width = 800;
+	const height = 600;
+	const numPoints = 50;
+	const iterations = 1;
+
+	// Create SVG
+	const svg = d3.select("#voronoi")
+	    .attr("width", width)
+	    .attr("height", height);
+
+	// Generate initial random points
+	let points = d3.range(numPoints).map(() => [Math.random() * width, Math.random() * height]);
+
+	// Function to draw Voronoi diagram
+	function drawVoronoi(points) {
+	    const voronoi = d3.Delaunay.from(points).voronoi([0, 0, width, height]);
+	    svg.selectAll("*").remove();
+	    
+	    svg.selectAll("path")
+	        .data(voronoi.cellPolygons())
+	        .enter().append("path")
+	        .attr("d", d3.line())
+	        .attr("stroke", "black")
+	        .attr("fill", "none");
+
+	    svg.selectAll("circle")
+	        .data(points)
+	        .enter().append("circle")
+	        .attr("cx", d => d[0])
+	        .attr("cy", d => d[1])
+	        .attr("r", 2)
+	        .attr("fill", "red");
+	}
+
+	// Function to perform Lloyd's relaxation
+	function lloydRelaxation(points) {
+	    const voronoi = d3.Delaunay.from(points).voronoi([0, 0, width, height]);
+	    return points.map((point, i) => {
+	        const cell = voronoi.cellPolygon(i);
+	        const centroid = d3.polygonCentroid(cell);
+	        return centroid;
+	    });
+	}
+
+	// Initial Voronoi diagram
+	drawVoronoi(points);
+
+	// Apply Lloyd's relaxation iteratively
+	for (let i = 0; i < iterations; i++) {
+	    points = lloydRelaxation(points);
+	}
+
+	// Voronoi diagram after Lloyd's relaxation
+	drawVoronoi(points);
+
+    </script>
+</body>
+</html>

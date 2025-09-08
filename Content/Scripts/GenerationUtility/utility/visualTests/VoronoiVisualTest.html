@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Voronoi Roads with Three.js</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6.0.4/dist/d3-delaunay.min.js"></script>
+    <script>
+        // Setup Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Add orbit controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        camera.position.z = 1000;
+        controls.update();
+
+        // Generate random points
+        const points = [];
+        const numPoints = 20;
+        for (let i = 0; i < numPoints; i++) {
+            points.push([Math.random() * window.innerWidth, Math.random() * window.innerHeight]);
+        }
+
+        // Compute Voronoi diagram
+        const delaunay = d3.Delaunay.from(points);
+        const voronoi = delaunay.voronoi([0, 0, window.innerWidth, window.innerHeight]);
+
+        // Create road network
+        const material = new THREE.LineBasicMaterial({ color: 0xffffff });
+        for (let i = 0; i < points.length; i++) {
+            const cell = voronoi.cellPolygon(i);
+            if (cell) {
+                for (let j = 0; j < cell.length - 1; j++) {
+                    const geometry = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(cell[j][0] - window.innerWidth / 2, cell[j][1] - window.innerHeight / 2, 0),
+                        new THREE.Vector3(cell[j + 1][0] - window.innerWidth / 2, cell[j + 1][1] - window.innerHeight / 2, 0)
+                    ]);
+                    const line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                }
+            }
+        }
+
+        // Animate the scene
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Voronoi Graph A* Path Visualization Test</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>Voronoi Graph A* Pathfinding</h2>
+        <p>Visualizing the Voronoi graph and the A* path.</p>
+    </div>
+
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+          }
+        }
+        </script>
+    <script type="module">
+
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // ==================== Data ====================
+        const voronoiCells = [
+          [
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 13287.507374821871, "Y": 1.5160266321813651, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 12155.666565106567, "Y": 5616.022756148721, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 10770.375681719082, "Y": 6766.166468304671, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 6284.034660224243, "Y": 0.9060269289748248, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 13287.507374821871, "Y": 1.5160266321813651, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            }
+          ],
+          [
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19999.400647276223, "Y": 19998.091918158858, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19954.087853127578, "Y": 19998.085835708054, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 13746.122123500756, "Y": 11940.108499357639, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19999.688266320114, "Y": 8004.197994596308, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19999.400647276223, "Y": 19998.091918158858, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            }
+          ],
+          [
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 12157.648722231123, "Y": 5619.380157533231, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19998.204877400654, "Y": 4698.55239218677, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19998.004142422822, "Y": 8002.093781801174, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 13744.71092750686, "Y": 11936.854136168022, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 9545.586029131227, "Y": 10688.207487125084, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 10772.132047660785, "Y": 6768.660086604295, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 12157.648722231123, "Y": 5619.380157533231, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            }
+          ],
+          [
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 6282.563359313646, "Y": 1.975560451293859, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 10768.316528951418, "Y": 6767.4745685533035, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 9543.09964556558, "Y": 10687.515025829183, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 9257.452565876785, "Y": 10847.424021678922, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 5419.512847891496, "Y": 9827.70132984787, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 2438.673623048533, "Y": 1.5137350347731626, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 6282.563359313646, "Y": 1.975560451293859, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            }
+          ],
+          [
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 7439.835650390285, "Y": 19998.48187202097, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 9258.951632516058, "Y": 10851.132249950544, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 9544.584717826414, "Y": 10691.223982451445, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 13743.431794970631, "Y": 11940.49464038098, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19952.883397837184, "Y": 19999.09610455513, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 7439.835650390285, "Y": 19998.48187202097, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            }
+          ],
+          [
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19998.368261369113, "Y": 1.156472671735628, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19998.51713226146, "Y": 4696.328560931093, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 12157.895364056752, "Y": 5616.759352895525, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 13290.569530478577, "Y": 0.9542378065416415, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 19998.368261369113, "Y": 1.156472671735628, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            }
+          ],
+          [
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 0.7032840854237747, "Y": 1.8722690765989682, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 2436.9609563169283, "Y": 1.9584548399097912, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 5417.654710486924, "Y": 9827.909789857937, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 0.44393748745164885, "Y": 11082.968543258297, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 0.7032840854237747, "Y": 1.8722690765989682, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            }
+          ],
+          [
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 1.2332242320776459, "Y": 19998.42546578525, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 1.3176172779894841, "Y": 11086.423271939293, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 5418.176327719647, "Y": 9831.469014113392, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 9256.618668258285, "Y": 10850.533320158134, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 7437.286704386668, "Y": 19998.436284689218, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            },
+            {
+              "Rotation": { "X": 0, "Y": 0, "Z": 0, "W": 1 },
+              "Translation": { "X": 1.2332242320776459, "Y": 19998.42546578525, "Z": 0 },
+              "Scale3D": { "X": 1, "Y": 1, "Z": 1 }
+            }
+          ]
+        ];
+
+        // ==================== Graph Construction ====================
+        // Function to build graph from Voronoi cells
+        function buildGraph(cells) {
+            const vertexMap = new Map(); // Map to store unique vertices
+            const vertices = [];         // Array to store vertex coordinates
+            let vertexId = 0;            // Unique ID for each vertex
+
+            // Helper function to create a unique key for a vertex (rounded to avoid floating point issues)
+            function vertexKey(x, y) {
+                const precision = 1e+6; // Adjust precision as needed
+                return `${(x / precision).toFixed(3)},${(y / precision).toFixed(3)}`;
+            }
+
+            // Assign unique IDs to vertices
+            cells.forEach(cell => {
+                cell.forEach(transform => {
+                    const x = transform.Translation.X;
+                    const y = transform.Translation.Y;
+                    const key = vertexKey(x, y);
+                    if (!vertexMap.has(key)) {
+                        vertexMap.set(key, vertexId);
+                        vertices.push({ X: x, Y: y });
+                        vertexId++;
+                    }
+                });
+            });
+
+            // Create edges without duplicates
+            const edgeSet = new Set();
+            const adjacency = {};
+
+            // Helper function to create a unique key for an edge
+            function edgeKey(idA, idB) {
+                return idA < idB ? `${idA}-${idB}` : `${idB}-${idA}`;
+            }
+
+            cells.forEach(cell => {
+                const n = cell.length;
+                for (let i = 0; i < n; i++) {
+                    const a = cell[i].Translation;
+                    const b = cell[(i + 1) % n].Translation;
+
+                    const keyA = vertexMap.get(vertexKey(a.X, a.Y));
+                    const keyB = vertexMap.get(vertexKey(b.X, b.Y));
+
+                    const eKey = edgeKey(keyA, keyB);
+
+                    //console.log(eKey);
+
+                    if (!edgeSet.has(eKey)) {
+                        edgeSet.add(eKey);
+
+                        // Initialize adjacency lists if necessary
+                        if (!adjacency[keyA]) adjacency[keyA] = [];
+                        if (!adjacency[keyB]) adjacency[keyB] = [];
+
+                        // Calculate Euclidean distance as edge weight
+                        const dx = a.X - b.X;
+                        const dy = a.Y - b.Y;
+                        const distance = Math.hypot(dx, dy);
+
+                        if(keyA != keyB){
+                            // Add the edge to both vertices' adjacency lists
+                            adjacency[keyA].push({ node: keyB, weight: distance });
+                            adjacency[keyB].push({ node: keyA, weight: distance });
+                        }
+                    }
+                }
+            });
+
+            return { vertices, adjacency };
+        }
+
+        const graph = buildGraph(voronoiCells);
+        console.log('Graph:', graph);
+
+        // ==================== A* Pathfinding ====================
+        // Priority Queue implementation using Min Heap
+        class PriorityQueue {
+            constructor() {
+                this.elements = [];
+            }
+
+            enqueue(element, priority) {
+                this.elements.push({ element, priority });
+                this.elements.sort((a, b) => a.priority - b.priority);
+            }
+
+            dequeue() {
+                return this.elements.shift().element;
+            }
+
+            isEmpty() {
+                return this.elements.length === 0;
+            }
+        }
+
+        // Heuristic function: Euclidean distance
+        function heuristic(a, b, vertices) {
+            const dx = vertices[a].X - vertices[b].X;
+            const dy = vertices[a].Y - vertices[b].Y;
+            return Math.hypot(dx, dy);
+        }
+
+        // A* algorithm implementation
+        function aStar(graph, vertices, startId, goalId) {
+            const frontier = new PriorityQueue();
+            frontier.enqueue(startId, 0);
+
+            const cameFrom = {};
+            const costSoFar = {};
+
+            cameFrom[startId] = null;
+            costSoFar[startId] = 0;
+
+            while (!frontier.isEmpty()) {
+                const current = frontier.dequeue();
+
+                if (current === goalId) {
+                    break;
+                }
+
+                const neighbors = graph.adjacency[current] || [];
+                neighbors.forEach(({ node, weight }) => {
+                    const newCost = costSoFar[current] + weight;
+                    if (!(node in costSoFar) || newCost < costSoFar[node]) {
+                        costSoFar[node] = newCost;
+                        const priority = newCost + heuristic(node, goalId, vertices);
+                        frontier.enqueue(node, priority);
+                        cameFrom[node] = current;
+                    }
+                });
+            }
+
+            // Reconstruct path
+            const path = [];
+            let current = goalId;
+            while (current !== null) {
+                path.push(current);
+                current = cameFrom[current];
+            }
+            path.reverse();
+
+            // Check if goal was reached
+            if (path[0] !== startId) {
+                return []; // No path found
+            }
+
+            return path;
+        }
+
+        // Function to find the closest vertex to given coordinates
+        function findClosestVertex(x, y, vertices) {
+            let closestId = -1;
+            let minDist = Infinity;
+            vertices.forEach((vertex, id) => {
+                const dx = vertex.X - x;
+                const dy = vertex.Y - y;
+                const dist = dx * dx + dy * dy;
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestId = id;
+                }
+            });
+            return closestId;
+        }
+
+        // Define start and goal coordinatesW
+        // For this example, we'll select two existing vertices
+        const startCoordinates = { X: 0, Y: 0 };
+        const goalCoordinates = { X: 20000, Y: 20000 };
+        // const goalCoordinates = { X: 14000, Y: 8000 };
+        // const goalCoordinates = { X: 14000, Y: 15000 };
+
+        const startId = findClosestVertex(startCoordinates.X, startCoordinates.Y, graph.vertices);
+        const goalId = findClosestVertex(goalCoordinates.X, goalCoordinates.Y, graph.vertices);
+
+        console.log(`Start Vertex ID: ${startId}`, graph.vertices[startId]);
+        console.log(`Goal Vertex ID: ${goalId}`, graph.vertices[goalId]);
+
+        // Run A* to find the path
+        const path = aStar(graph, graph.vertices, startId, goalId);
+        console.log('Path:', path);
+
+        // ==================== Visualization with Three.js ====================
+        // Initialize Three.js Scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+
+        // Set up camera
+        const centerX = 10000; 
+        const centerY = 10000;
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 100000);
+        camera.position.set(centerX, centerY, 50000);
+
+        // Set up renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create CSS2DRenderer for the text
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize( window.innerWidth, window.innerHeight );
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        document.body.appendChild( labelRenderer.domElement );
+
+
+        // Add orbit controls
+        const controls = new OrbitControls(camera, labelRenderer.domElement);
+        controls.target.set(centerX, centerY, 0);
+        controls.update();
+
+        // Add ambient light
+        const ambientLight = new THREE.AmbientLight(0x888888);
+        scene.add(ambientLight);
+
+        // Add directional light
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        directionalLight.position.set(1, 1, 1).normalize();
+        scene.add(directionalLight);
+
+        // Function to convert vertex to Three.js Vector3
+        function toVector3(vertex) {
+            return new THREE.Vector3(vertex.X, vertex.Y, vertex.Z || 0);
+        }
+
+        // Draw all edges
+        const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 1 });
+        const edgeGeometry = new THREE.BufferGeometry();
+        const edgePoints = [];
+
+        const drawnEdges = new Set();
+
+        // Function to create text label
+        function createTextLabel(text, position) {
+            // Create a div element for the label
+            const div = document.createElement('div');
+            div.className = 'label';
+            div.textContent = text;
+            div.style.marginTop = '-1em';
+            div.style.color = 'white';
+            div.style.fontSize = '20px'; // Adjust font size
+            div.style.backgroundColor = 'rgba(0,0,0,0.5)'; // Optional: background for better visibility
+            div.style.padding = '2px 5px';
+            div.style.borderRadius = '4px';
+
+            // Create a CSS2DObject for the label
+            const label = new CSS2DObject(div);
+            label.position.set(position.x, position.y, position.z);
+            
+            // Add the label to the scene
+            scene.add(label);
+        }
+
+        // Example position
+        
+
+        let n = 0;
+        Object.keys(graph.adjacency).forEach(id => {
+            let j = 0;
+            const from = graph.vertices[id];
+
+            graph.adjacency[id].forEach(({ node }) => {
+                // To avoid drawing duplicate edges, ensure from < to
+                if (parseInt(id) < node) {
+                    const toVertex = graph.vertices[node];
+                    edgePoints.push(from.X, from.Y, 0);
+                    edgePoints.push(toVertex.X, toVertex.Y, 0);
+
+                    console.log(`push ${id} to ${node}, I:${n}-${j}`);
+                    j++;
+                }
+            });
+            n++;
+        });
+
+        Object.keys(graph.vertices).forEach(vertexKey=>{
+            const vertex = graph.vertices[vertexKey];
+            const textPosition = new THREE.Vector3(vertex.X, vertex.Y, vertex.Z);
+            createTextLabel(`${vertexKey}`, textPosition);
+        });
+
+        edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(edgePoints, 3));
+        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        scene.add(edges);
+
+        // Draw the A* path
+        if (path.length > 0) {
+            const pathMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 5 });
+            const pathGeometry = new THREE.BufferGeometry();
+            const pathPoints = [];
+
+            path.forEach(id => {
+                const vertex = graph.vertices[id];
+                pathPoints.push(vertex.X, vertex.Y, 10); // Slightly above the edges
+            });
+
+            pathGeometry.setAttribute('position', new THREE.Float32BufferAttribute(pathPoints, 3));
+            const pathLine = new THREE.Line(pathGeometry, pathMaterial);
+            scene.add(pathLine);
+        } else {
+            console.warn('No path found between the selected vertices.');
+        }
+
+        // Draw start and goal points
+        const startGeometry = new THREE.SphereGeometry(500, 16, 16);
+        const startMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const startSphere = new THREE.Mesh(startGeometry, startMaterial);
+        startSphere.position.set(startCoordinates.X, startCoordinates.Y, 0);
+        scene.add(startSphere);
+
+        const goalGeometry = new THREE.SphereGeometry(500, 16, 16);
+        const goalMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+        const goalSphere = new THREE.Mesh(goalGeometry, goalMaterial);
+        goalSphere.position.set(goalCoordinates.X, goalCoordinates.Y, 0);
+        scene.add(goalSphere);
+
+        // Handle window resize
+        window.addEventListener('resize', onWindowResize, false);
+
+        function onWindowResize(){
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize( window.innerWidth, window.innerHeight );
+        }
+
+        // Render loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+            labelRenderer.render( scene, camera );
+        }
+        animate();
+    </script>
+</body>
+</html>

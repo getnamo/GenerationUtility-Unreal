@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaikin's Algorithm 3D Visualization with Three.js</title>
+    <style>
+        body { margin: 0; }
+        canvas { width: 50%; height: 100vh; float: left; }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // Function to apply Chaikin's algorithm to smooth a polyline in 3D
+        function chaikinSmooth(points, iterations) {
+            let smoothedPoints = points.slice(); // Copy the original points array
+
+            for (let i = 0; i < iterations; i++) {
+                let newPoints = [];
+
+                for (let j = 0; j < smoothedPoints.length - 1; j++) {
+                    // Calculate the new points
+                    let p1 = smoothedPoints[j];
+                    let p2 = smoothedPoints[j + 1];
+
+                    let Q1 = {
+                        X: p1.X + (p2.X - p1.X) * 0.25,
+                        Y: p1.Y + (p2.Y - p1.Y) * 0.25,
+                        Z: p1.Z + (p2.Z - p1.Z) * 0.25
+                    };
+
+                    let Q2 = {
+                        X: p1.X + (p2.X - p1.X) * 0.75,
+                        Y: p1.Y + (p2.Y - p1.Y) * 0.75,
+                        Z: p1.Z + (p2.Z - p1.Z) * 0.75
+                    };
+
+                    newPoints.push(Q1);
+                    newPoints.push(Q2);
+                }
+
+                // Update the smoothed points array
+                smoothedPoints = newPoints;
+            }
+
+            return smoothedPoints;
+        }
+
+        // Original polyline points in 3D
+        const originalPoints = [
+            { X: -50, Y: 50, Z: 50 },
+            { X: -30, Y: 60, Z: -10 },
+            { X: 0, Y: 40, Z: 5 },
+            { X: 30, Y: 70, Z: -20 },
+            { X: 50, Y: 30, Z: -50 }
+        ];
+
+        // Number of iterations for Chaikin's algorithm
+        const iterations = 3;
+
+        // Smooth the polyline in 3D
+        const smoothedPoints = chaikinSmooth(originalPoints, iterations);
+
+        // Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.z = 200;
+
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Orbit controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Optional: enable damping for smoother rotation
+
+        // Create geometry for original polyline
+        const originalGeometry = new THREE.BufferGeometry();
+        const originalVertices = [];
+        originalPoints.forEach(point => {
+            originalVertices.push(point.X, point.Y, point.Z);
+        });
+        originalGeometry.setAttribute('position', new THREE.Float32BufferAttribute(originalVertices, 3));
+
+        const originalMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+        const originalLine = new THREE.Line(originalGeometry, originalMaterial);
+        scene.add(originalLine);
+
+        // Create geometry for smoothed polyline
+        const smoothedGeometry = new THREE.BufferGeometry();
+        const smoothedVertices = [];
+        smoothedPoints.forEach(point => {
+            smoothedVertices.push(point.X, point.Y, point.Z);
+        });
+        smoothedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(smoothedVertices, 3));
+
+        const smoothedMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+        const smoothedLine = new THREE.Line(smoothedGeometry, smoothedMaterial);
+        //smoothedLine.position.y = -50; // Offset smoothed line for comparison
+        scene.add(smoothedLine);
+
+        // Render loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Update orbit controls
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

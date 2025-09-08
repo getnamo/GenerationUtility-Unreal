@@ -1,0 +1,46 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "GenerationUtility",
+	"Description": "Utility Functions for generation work",
+	"Category": "ProceduralGeneration",
+	"CreatedBy": "getnamo",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "GenerationUtility",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "UnrealJS",
+			"Enabled": true
+		},
+		{
+			"Name": "RuntimeGeometryUtils",
+			"Enabled": true
+		},
+		{
+			"Name": "GlobalEventSystem",
+			"Enabled": true
+		},
+		{
+			"Name": "SocketIOClient",
+			"Enabled": true
+		},
+		{
+			"Name": "RealtimeMeshComponent",
+			"Enabled": true
+		},
+	]
+}
