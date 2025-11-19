@@ -300,15 +300,15 @@ void UEntityPlanningSystem::ClearAllPlansForEveryone()
 
 void UEntityPlanningSystem::AddDefaultTracks()
 {
-    UEntityPlanTrack* TrackT0 = NewObject<UEntityPlanTrack>(UEntityPlanTrack::StaticClass(), TEXT("SurvivalPrimalT0"));
+    UEntityPlanTrack* TrackT0 = NewObject<UEntityPlanTrack>(this, TEXT("SurvivalPrimalT0"));
     TrackT0->TrackName = TEXT("Survival");
     Tracks.Add(TrackT0->TrackName, TrackT0);
 
-    UEntityPlanTrack* TrackT1 = NewObject<UEntityPlanTrack>(UEntityPlanTrack::StaticClass(), TEXT("TacticsT1"));
+    UEntityPlanTrack* TrackT1 = NewObject<UEntityPlanTrack>(this, TEXT("TacticsT1"));
     TrackT1->TrackName = TEXT("Tactics");
     Tracks.Add(TrackT1->TrackName, TrackT1);
 
-    UEntityPlanTrack* TrackT2 = NewObject<UEntityPlanTrack>(UEntityPlanTrack::StaticClass(), TEXT("ScheduleT2"));
+    UEntityPlanTrack* TrackT2 = NewObject<UEntityPlanTrack>(this, TEXT("ScheduleT2"));
     TrackT2->TrackName = TEXT("Schedule");
     Tracks.Add(TrackT2->TrackName, TrackT2);
 }

@@ -43,7 +43,9 @@ exports.armyPositions = function(armySize, {
     armyDepth=1,
     cohortSpacing=1000,
     spacing=100,
-    offset={X:0,Y:0,Z:0}}={}){
+    offset={X:0,Y:0,Z:0},
+    logDetails=false,
+}={}){
 
     const cohorts = Math.ceil(armySize/cohortSize);
 
@@ -99,8 +101,10 @@ exports.armyPositions = function(armySize, {
     let positions = [];
     let remainingTroops = armySize;
 
-    console.log(`army width ${armyWidth}, depth: ${armyDepth}`);
-    console.log('army remaining: ', remainingTroops);
+    if(logDetails){
+        console.log(`army width ${armyWidth}, depth: ${armyDepth}`);
+        console.log('army remaining: ', remainingTroops);
+    }
 
     for(let d = 0; d<armyDepth;d++){
         for(let w = 0; w<armyWidth; w++){
@@ -115,12 +119,16 @@ exports.armyPositions = function(armySize, {
 
             remainingTroops -= cohortSize;
 
-            console.log('army remaining: ', remainingTroops, 'positions total', positions.length);
+            if(logDetails){
+                console.log('army remaining: ', remainingTroops, 'positions total', positions.length);
+            }
         }
     }
 
-    console.log('total positions: ', positions.length);
-
+    if(logDetails){
+        console.log('total positions: ', positions.length);
+    }
+    
     return positions;
 }
 

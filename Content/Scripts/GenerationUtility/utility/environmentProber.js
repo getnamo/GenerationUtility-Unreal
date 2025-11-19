@@ -231,7 +231,6 @@ function EnvironmentProber({originActor, landscape}={}){
             false
         );
 
-        //Optional method for kai, you shouldn't need this, the vanilla one already has bReturnPhysicalMaterial = true
         // const Params = new CollisionQueryBPParams();
         // Params.bTraceComplex = false;
         // Params.bReturnPhysicalMaterial = true;
@@ -246,7 +245,11 @@ function EnvironmentProber({originActor, landscape}={}){
             if(detailHit){
                 const hitActorName = Result.HitObjectHandle.ReferenceObject.GetName();
                 const hitLandscape = hitActorName.startsWith('Landscape');
+                const hitVoxel = hitActorName.startsWith('VoxelCollisionComponent');
+                
                 detailHit.hitLandscape = hitLandscape;
+                detailHit.hitVoxel = hitVoxel;
+                
             }
 
             let Distance = Result.Location.Z;//Start.Subtract_VectorVector(Result.Location).VSize();

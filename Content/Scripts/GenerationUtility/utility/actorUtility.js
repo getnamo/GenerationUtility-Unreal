@@ -140,8 +140,14 @@ function spawnBp(type, loc={},rot={}){
 }
 
 function spawnActorFromBp(actorBlueprint, transform = makeTransform()){
-	let actor = GWorld.BeginSpawningActorFromBlueprint(actorBlueprint, transform, false);
+	const actor = GWorld.BeginSpawningActorFromBlueprint(actorBlueprint, transform, false);
 	actor.FinishSpawningActor(transform);
+	return actor;
+}
+
+//convenience wrapper for easier construction
+function spawnActor(inClass, transform = makeTransform()){
+	const actor = new inClass(GWorld, transform.Translation, Quat.Quat_Rotator(transform.Rotation));
 	return actor;
 }
 
@@ -157,3 +163,4 @@ exports.newSMActor = newSMActor;
 exports.duplicateActor = duplicateActor;
 exports.spawnBp = spawnBp;
 exports.spawnActorFromBp = spawnActorFromBp;
+exports.spawnActor = spawnActor;

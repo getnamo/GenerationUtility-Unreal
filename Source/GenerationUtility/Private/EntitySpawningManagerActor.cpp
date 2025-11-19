@@ -352,7 +352,8 @@ AActor* AEntitySpawningManagerActor::SwapStaticInstanceToNearField(UStaticMesh* 
         IEntityGroupActionInterface::Execute_OnGroupTransformUpdate(NearFieldActor, InstanceLastTransform); //give position update first
 
         FESMNearFieldSwapData SwapData;
-        SwapData.EntityId = StaticEntityId;
+        SwapData.EntityId = PerInstanceData.EntityId;
+        SwapData.InstanceId = StaticEntityId;
         SwapData.InstanceMesh = Mesh;
         SwapData.ESMActor = this;
         SwapData.DataObject = PerInstanceData.DataObject;
@@ -556,8 +557,8 @@ void AEntitySpawningManagerActor::TravelDynamicISMTowardTargets(UStaticMesh* Mes
     for (int32 i = 0; i < MaxSMNum; i++)
     {
         FInstanceSpecializedData& SpecializedData = ISMSpecializedData.PerInstance[i];
-        // Grab the Uid
-        FPrimitiveInstanceId InstanceId = { SpecializedData.Uid };
+        // Grab the InstanceId
+        FPrimitiveInstanceId InstanceId = { SpecializedData.InstanceId };
 
         FTransform& Transform = NextTransforms[i];  
         //todo: properly handle uid based transforms not by index, see below refs
@@ -616,13 +617,13 @@ void AEntitySpawningManagerActor::TravelDynamicISMTowardTargets(UStaticMesh* Mes
 
                     if (Settings.bDebugLogNearFieldSwaps)
                     {
-                        UE_LOG(LogTemp, Log, TEXT("%d Transition to farfield due to distance. LastPos: %s"), SpecializedData.Uid, *ActorFarfieldTransform.GetLocation().ToCompactString());
+                        UE_LOG(LogTemp, Log, TEXT("%d Transition to farfield due to distance. LastPos: %s"), SpecializedData.InstanceId, *ActorFarfieldTransform.GetLocation().ToCompactString());
                     }
                     continue; //skip if we swap out
                 }
                 else
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("%d failed to transition due to SpecializedData.NearFieldActor being nullptr."), SpecializedData.Uid);
+                    UE_LOG(LogTemp, Warning, TEXT("%d failed to transition due to SpecializedData.NearFieldActor being nullptr."), SpecializedData.InstanceId);
                 }
             }
         }
@@ -755,12 +756,12 @@ void AEntitySpawningManagerActor::TravelDynamicISMTowardTargets(UStaticMesh* Mes
 
                     NextTransforms[idx] = ActorFarfieldTransform;
                     PrevTransforms[idx] = ActorFarfieldTransform;
-                    TransformUpdateIds.Add({ SpecializedData.Uid });
+                    TransformUpdateIds.Add({ SpecializedData.InstanceId });
                     bHasSwapUpdates = true;
 
                     if (Settings.bDebugLogNearFieldSwaps)
                     {
-                        UE_LOG(LogTemp, Log, TEXT("%d Released due to oversubscribed pool and farthest away. LastPos: %s"), SpecializedData.Uid, *ActorFarfieldTransform.GetLocation().ToCompactString());
+                        UE_LOG(LogTemp, Log, TEXT("%d Released due to oversubscribed pool and farthest away. LastPos: %s"), SpecializedData.InstanceId, *ActorFarfieldTransform.GetLocation().ToCompactString());
                     }
                 }
             }
@@ -794,6 +795,7 @@ void AEntitySpawningManagerActor::TravelDynamicISMTowardTargets(UStaticMesh* Mes
                     {
                         FESMNearFieldSwapData SwapData;
                         SwapData.EntityId = SpecializedData.Uid;
+                        SwapData.InstanceId = SpecializedData.InstanceId;
                         SwapData.InstanceMesh = Mesh;
                         SwapData.ESMActor = this;
                         SwapData.DataObject = SpecializedData.DataObject;
@@ -802,13 +804,13 @@ void AEntitySpawningManagerActor::TravelDynamicISMTowardTargets(UStaticMesh* Mes
                     }
                     
                     //We're not ready for this
-                    //ISMComponent->RemoveInstanceById({ SpecializedData.Uid });
+                    //ISMComponent->RemoveInstanceById({ SpecializedData.InstanceId });
 
                     //For debug space the out of world swap so we can see which one is swapped out
                     FVector OutOfWorldDebug = SwapPool.OutOfWorldLocation + FVector(100 * EntryId, 0, 0);
 
                     // Move the ISM instance offscreen while its actor is handling movement.
-                    FPrimitiveInstanceId InstanceId = { SpecializedData.Uid };
+                    FPrimitiveInstanceId InstanceId = { SpecializedData.InstanceId };
                     NextTransforms[EntryId].SetLocation(OutOfWorldDebug);   
                     PrevTransforms[EntryId].SetLocation(OutOfWorldDebug);
                     TransformUpdateIds.Add(InstanceId);  //NB: we use aggregate construction to pass in a FPrimitiveInstanceId from int32
@@ -824,7 +826,7 @@ void AEntitySpawningManagerActor::TravelDynamicISMTowardTargets(UStaticMesh* Mes
 
                     if (Settings.bDebugLogNearFieldSwaps)
                     {
-                        UE_LOG(LogTemp, Log, TEXT("%d Transition to nearfield as nearest overlap. LastPos: %s"), SpecializedData.Uid, *PreSwapXForm.GetLocation().ToCompactString());
+                        UE_LOG(LogTemp, Log, TEXT("%d Transition to nearfield as nearest overlap. LastPos: %s"), SpecializedData.InstanceId, *PreSwapXForm.GetLocation().ToCompactString());
                     }
                 }
 
@@ -1339,21 +1341,21 @@ void AEntitySpawningManagerActor::SaveCacheToFile(const FString& FileName, bool 
     CUSystem->SaveBytesToPath(Bytes, FullPath, false);
 }
 
-void AEntitySpawningManagerActor::HitResultSwapInteraction(AActor* InInteractingActor, const FHitResult& HitResult, bool& bSuccess)
+AActor* AEntitySpawningManagerActor::HitResultSwapInteraction(AActor* InInteractingActor, const FHitResult& HitResult, bool& bSuccess)
 {
     bSuccess = false;
 
     if (!Settings.bEnableInstanceInteraction)
     {
         UE_LOG(LogTemp, Log, TEXT("AttemptTraceInteract_Implementation interaction disabled for this ESM (todo: remove this log if used in production)"));
-        return;
+        return nullptr;
     }
 
     UInstancedStaticMeshComponent* ISMComponent = Cast<UInstancedStaticMeshComponent>(HitResult.GetComponent());
     if (!ISMComponent)
     {
         UE_LOG(LogTemp, Log, TEXT("AttemptTraceInteract_Implementation no ISM component found in trace data"));
-        return;
+        return nullptr;
     }
 
     const FString& InstigatorName = InInteractingActor->GetActorNameOrLabel();
@@ -1363,8 +1365,46 @@ void AEntitySpawningManagerActor::HitResultSwapInteraction(AActor* InInteracting
 
     UE_LOG(LogTemp, Log, TEXT("%s Trace Interaction with Mesh %s Instance: %d"), *InstigatorName, *EntityStaticMeshKeyString, EntityIndex);
 
-    bSuccess = SwapStaticInstanceToNearField(Mesh, EntityIndex) != nullptr;
-    return;
+    AActor* SpawnedActor = SwapStaticInstanceToNearField(Mesh, EntityIndex);
+
+    bSuccess = SpawnedActor != nullptr;
+    return SpawnedActor;
+}
+
+FString AEntitySpawningManagerActor::GetNearFieldLabelForHitResult(const FHitResult& HitResult)
+{
+    if (!Settings.bEnableInstanceInteraction)
+    {
+        UE_LOG(LogTemp, Log, TEXT("GetNearFieldLabelForHitResult interaction disabled for this ESM (todo: remove this log if used in production)"));
+        return TEXT("Not Found");
+    }
+
+    UInstancedStaticMeshComponent* ISMComponent = Cast<UInstancedStaticMeshComponent>(HitResult.GetComponent());
+    if (!ISMComponent)
+    {
+        UE_LOG(LogTemp, Log, TEXT("AttemptTraceInteract_Implementation no ISM component found in trace data"));
+        return TEXT("Not Found");
+    }
+
+    UStaticMesh* Mesh = ISMComponent->GetStaticMesh();
+    int32 EntityIndex = HitResult.Item;
+
+    if (!ISMComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("AEntitySpawningManagerActor::SwapStaticInstanceToNearField no static ISM component."));
+        return TEXT("Not Found");
+    }
+
+    if (!StaticMapData.SwapData.Contains(Mesh))
+    {
+        return TEXT("Not Found");
+    }
+
+    FString Label = StaticMapData.SwapData[Mesh].NearFieldInfo.SwapPool.NearFieldLabel;
+    
+    MetaData.Add(TEXT("LastTracedLabel"), Label);
+
+    return Label;
 }
 
 UStaticMesh* AEntitySpawningManagerActor::LoadMeshFromPath(const FString& MeshPath, UObject* WorldContextObject)
@@ -1502,15 +1542,26 @@ void AEntitySpawningManagerActor::UpdateISMTransformsFromBuffer(UStaticMesh* Mes
     }
 }
 
-void AEntitySpawningManagerActor::SetISMMovementBatchTargetData(UStaticMesh* Mesh, const TArray<FVector>& Targets)
+//NB: this function is doing some heavy lifting it's not supposed to, we need to refactor our Uid setting/etc
+void AEntitySpawningManagerActor::SetISMMovementBatchTargetData(UStaticMesh* Mesh, const TArray<FVector>& Targets, const TArray<int32>& Uids)
 {
     FISMSpecializedData SpecializedDataList;
+
+    bool bValidUidList = Uids.Num() == Targets.Num();
 
     for (int32 i = 0; i < Targets.Num(); i++)
     {
         FInstanceSpecializedData PerInstanceData;
         PerInstanceData.Target = Targets[i];
-        PerInstanceData.Uid = i;
+        PerInstanceData.InstanceId = i;
+        if (bValidUidList)
+        {
+            PerInstanceData.Uid = Uids[i];
+        }
+        else
+        {
+            PerInstanceData.Uid = i;    //Same as 
+        }
         PerInstanceData.bReachedTarget = false;
 
         SpecializedDataList.PerInstance.Add(PerInstanceData);
@@ -1536,7 +1587,8 @@ void AEntitySpawningManagerActor::SetISMMovementTargetDataForIndex(UStaticMesh* 
         {
             FInstanceSpecializedData PerInstanceData;
             
-            PerInstanceData.Uid = i;
+            PerInstanceData.InstanceId = i;
+            PerInstanceData.Uid = i;            //NOTE: this should be a passed in UID, not instance id
             PerInstanceData.bReachedTarget = false;
             //NB: No need to remove ReachedTargetSet since it doesn't exist yet
 
@@ -1578,7 +1630,8 @@ void AEntitySpawningManagerActor::SetISMMovementTargetDataForIndex(UStaticMesh* 
         {
             FInstanceSpecializedData PerInstanceData;
 
-            PerInstanceData.Uid = i;
+            PerInstanceData.Uid = i;        //NOTE: this should be a passed in UID, not instance id
+            PerInstanceData.InstanceId = i;
             PerInstanceData.bReachedTarget = false;
             MeshTargetDataList.ReachedTargetSet.Remove(i);
             MeshTargetDataList.ReachedSetSinceLastCheck.Remove(i);

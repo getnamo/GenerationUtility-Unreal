@@ -40,11 +40,15 @@ public class GenerationUtility : ModuleRules
 				"SlateCore",
 				"GlobalEventSystem",
                 "SIOJson",
+				"Json",
                 "CoreUtility",
 				"RuntimeGeometryUtils",
 				"ProceduralMeshComponent",
                 "RealtimeMeshComponent",
 				"V8",
+				"Voxel",
+				"VoxelGraph",
+				"VoxelCore",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

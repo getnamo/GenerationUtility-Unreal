@@ -15,6 +15,10 @@ struct GENERATIONUTILITY_API FESMNearFieldSwapData
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InstancePlacementCache)
     int32 EntityId = -1;
 
+    //index in the static mesh array
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InstancePlacementCache)
+    int32 InstanceId = -1;
+
     //Far field instance mesh key
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InstancePlacementCache)
     UStaticMesh* InstanceMesh;

@@ -57,6 +57,10 @@ struct GENERATIONUTILITY_API FActorSwapPool
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Pool")
     TSubclassOf<AActor> PooledActorClass;
 
+    /** For e.g. hovers*/
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InstanceSpecializedData)
+    FString NearFieldLabel = TEXT("");
+
     /** On spawn adjustment */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Actor Pool")
     FTransform ActorOffset;

@@ -447,12 +447,46 @@ exports.randomItem = function(arr, randfunction = Math.random) {
 	return arr[randomIndex];
 }
 
+//Select a random vector of size X
+exports.randomVector = function({radius=1, clampZ = false}={}, randfunction = Math.random) {
+	const X = randfunction() * radius;
+	const Y = randfunction() * radius;
+	const Z = clampZ ? 0 : randfunction() * radius;
+	
+	return Vector.MakeVector(X, Y, Z);
+}
+
 exports.randomIndex = function(arr, randfunction = Math.random) {
 	// Generate a random index based on the array length
 	const randomIndex = Math.floor(randfunction() * arr.length);
 
 	// Return the random index
 	return randomIndex;
+}
+
+/** Simple concatenator for names, supply two arrays or json array strings */
+exports.randomName = function(list1, {list2 = undefined, addSpace = true}={}, randfunction = Math.random){
+	if(typeof list1 === 'string'){
+		list1 = JSON.parse(list1);
+	}
+	
+	if(!list2){
+		return exports.randomItem(list1, randfunction);
+	}
+	if(typeof list2 === 'string'){
+		list2 = JSON.parse(list2);
+	}
+
+	const first = exports.randomItem(list1, randfunction);
+	const second = exports.randomItem(list2, randfunction);
+
+	if(addSpace){
+		return first + " " + second;
+	}
+	else{
+		return first + second;
+	}
+
 }
 
 /**
@@ -686,4 +720,200 @@ exports.inAwaitableContext = async (callback = async ()=>{})=>{
 	catch(e){
 		console.error(e.stack);
 	}
+}
+
+// a, b are {X, Y}
+// options: { segments, amplitude, randomness }
+exports.makeSquigglyPoints = function(a, b, {
+	segments = 10,
+	amplitude = 10,
+	randomness = 0.5,
+	seed = 'l33t',
+} = {}) {
+
+	const points = [];
+	const dx = b.X - a.X;
+	const dy = b.Y - a.Y;
+	const length = Math.hypot(dx, dy);
+
+	// Unit direction from a → b
+	const ux = dx / length;
+	const uy = dy / length;
+
+	// Perpendicular vector (normal)
+	const nx = -uy;
+	const ny = ux;
+
+	const rand = exports.randomStream(seed);
+
+	// Generate intermediate points
+	for (let i = 1; i < segments; i++) {
+		const t = i / segments;
+
+		// Base point along the straight line
+		const px = a.X + dx * t;
+		const py = a.Y + dy * t;
+
+		// Sinusoidal squiggle
+		const wave = Math.sin(t * Math.PI * 2 * (1 + randomness)) // base
+				+ (rand() - 0.5) * randomness * 2;        // jitter
+
+		// Offset perpendicular
+		const offset = wave * amplitude;
+
+		points.push({
+			X: px + nx * offset,
+			Y: py + ny * offset
+		});
+	}
+
+	return points;
+}
+
+/**
+ * Find the vertex in a road network that best matches the direction from
+ * `inside` towards `city`.
+ *
+ * @param {Array<{X:number, Y:number}>} vertices - road network vertices
+ * @param {{X:number, Y:number}} inside - point inside the road area
+ * @param {{X:number, Y:number}} city   - external city point
+ * @returns {{vertex: {X:number, Y:number}, index: number} | null}
+ */
+exports.findConnectionVertex = function(vertices, inside, city) {
+	if (!vertices || vertices.length === 0) return null;
+
+	const dirX = city.X - inside.X;
+	const dirY = city.Y - inside.Y;
+	const dirLen = Math.hypot(dirX, dirY);
+	if (dirLen === 0) {
+		// Degenerate: inside == city, just return the closest vertex
+		let bestIdx = 0;
+		let bestDist2 = Infinity;
+		for (let i = 0; i < vertices.length; i++) {
+			const v = vertices[i];
+			const dx = v.X - inside.X;
+			const dy = v.Y - inside.Y;
+			const d2 = dx*dx + dy*dy;
+			if (d2 < bestDist2) {
+				bestDist2 = d2;
+				bestIdx = i;
+			}
+		}
+		return { vertex: vertices[bestIdx], index: bestIdx };
+	}
+
+	// Normalized direction towards city
+	const ux = dirX / dirLen;
+	const uy = dirY / dirLen;
+
+	let bestIdx = -1;
+	let bestPerp2 = Infinity;
+	let bestProj = -Infinity;
+
+	// First pass: prefer vertices in front of `inside` (proj > 0)
+	for (let i = 0; i < vertices.length; i++) {
+		const v = vertices[i];
+		const wx = v.X - inside.X;
+		const wy = v.Y - inside.Y;
+
+		const proj = wx * ux + wy * uy; // projection length along direction
+		if (proj <= 0) continue; // behind us relative to city, skip for now
+
+		const wLen2 = wx*wx + wy*wy;
+		const perp2 = wLen2 - proj*proj; // squared perpendicular distance to ray
+
+		if (
+			perp2 < bestPerp2 ||
+			(perp2 === bestPerp2 && proj > bestProj)
+		) {
+			bestPerp2 = perp2;
+			bestProj = proj;
+			bestIdx = i;
+		}
+	}
+
+	// If we found something in front, use it
+	if (bestIdx !== -1) {
+		return { vertex: vertices[bestIdx], index: bestIdx };
+	}
+
+	// Fallback: everything is behind; choose best aligned by angle (max cosine)
+	let fallbackIdx = 0;
+	let bestCos = -Infinity;
+	for (let i = 0; i < vertices.length; i++) {
+		const v = vertices[i];
+		const wx = v.X - inside.X;
+		const wy = v.Y - inside.Y;
+		const wLen = Math.hypot(wx, wy);
+		if (wLen === 0) {
+			// Inside point coincides with a vertex
+			return { vertex: v, index: i };
+		}
+		const cosTheta = (wx * ux + wy * uy) / wLen; // dot(normalize(w), u)
+		if (cosTheta > bestCos) {
+			bestCos = cosTheta;
+			fallbackIdx = i;
+		}
+	}
+	return { vertex: vertices[fallbackIdx], index: fallbackIdx };
+}
+
+/**
+ * Given a list of city locations, build a simple connected road network.
+ * Returns an array of [i, j] index pairs into the input list.
+ *
+ * @param {Array<{X:number, Y:number}>} cities
+ * @returns {Array<[number, number]>} edges
+ */
+exports.buildCityRoadNetwork = function(cities) {
+	const n = cities.length;
+	if (n <= 1) return [];
+
+	const inTree = new Array(n).fill(false);
+	const edges = [];
+
+	// Start from city 0
+	inTree[0] = true;
+	let numInTree = 1;
+
+	// Helper: squared distance between city i and j
+	function dist2(i, j) {
+		const a = cities[i];
+		const b = cities[j];
+		const dx = a.X - b.X;
+		const dy = a.Y - b.Y;
+		return dx*dx + dy*dy;
+	}
+
+	// At each step, connect the closest city not yet in the tree
+	// to any city already in the tree (Prim's algorithm, O(n^2))
+	while (numInTree < n) {
+		let bestI = -1;
+		let bestJ = -1;
+		let bestD2 = Infinity;
+
+		for (let i = 0; i < n; i++) {
+			if (!inTree[i]) continue;
+			for (let j = 0; j < n; j++) {
+				if (inTree[j]) continue;
+				const d2 = dist2(i, j);
+				if (d2 < bestD2) {
+					bestD2 = d2;
+					bestI = i;
+					bestJ = j;
+				}
+			}
+		}
+
+		if (bestI === -1 || bestJ === -1) {
+			// Shouldn't happen if all cities are valid
+			break;
+		}
+
+		edges.push([bestI, bestJ]);
+		inTree[bestJ] = true;
+		numInTree++;
+	}
+
+	return edges;
 }

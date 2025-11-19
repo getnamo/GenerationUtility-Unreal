@@ -1456,10 +1456,6 @@ function CellOperations(meta, {defaultWall, defaultFloor, defaultFoundation, wal
 
 
 		let firstWallMap = buildWalls? makeWallsFromCellMap(firstFloorCells, houseOrigin, {
-			//sm: oMap.Wall1
-			//sm: oMap.Wall2
-			//sm: oMap.WallWood
-			//sm: oMap.Doorway
 			smList:blockMeshMap.wallList,
 			smT:centerSmT
 		}) : undefined;

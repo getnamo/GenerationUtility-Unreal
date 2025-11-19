@@ -70,6 +70,9 @@ struct GENERATIONUTILITY_API FInstanceSpecializedData
     //template or unique instance id
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InstanceSpecializedData)
     int32 Uid = -1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = InstanceSpecializedData)
+    int32 InstanceId = -1;
 };
 
 USTRUCT()
@@ -395,8 +398,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "ESM Functions")
     void UpdateISMTransformsFromBuffer(UStaticMesh* Mesh, const TArray<uint8>& Buffer);
 
+    //if you leave uids empty, it will assume instanceid == uid. TODO refactor to pull out the initial setup from here...
     UFUNCTION(BlueprintCallable, Category = "ESM Functions")
-    void SetISMMovementBatchTargetData(UStaticMesh* Mesh, const TArray<FVector>& Targets);
+    void SetISMMovementBatchTargetData(UStaticMesh* Mesh, const TArray<FVector>& Targets, const TArray<int32>& Uids);
 
     //Target speed is optional if not set different from default it will not change it
     UFUNCTION(BlueprintCallable, Category = "ESM Functions")
@@ -486,8 +490,15 @@ public:
     UEntityPlanningSystem* PlanningSystem;
 
     //Handle hit results
-    UFUNCTION(BlueprintCallable, Category = "ESM Functions")
-    void HitResultSwapInteraction(AActor* InInteractingActor, const FHitResult& HitResult, bool& bSuccess);
+    UFUNCTION(BlueprintCallable, Category = "Tracing|ESM Functions")
+    AActor* HitResultSwapInteraction(AActor* InInteractingActor, const FHitResult& HitResult, bool& bSuccess);
+
+    UFUNCTION(BlueprintCallable, Category = "Tracing|ESM Functions")
+    FString GetNearFieldLabelForHitResult(const FHitResult& HitResult);
+
+
+    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tracing|ESM SubSystem")
+    TMap<FString, FString> MetaData;
 
 private:
     //Todo swap into this data struct vs per lookup

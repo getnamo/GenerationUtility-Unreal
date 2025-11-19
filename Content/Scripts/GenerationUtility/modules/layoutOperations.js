@@ -7,6 +7,7 @@ const {
 	makeTransform,
 	makeVector,
 	debugPoint,
+	logIfEnabled,
 	quadrilateralArea,
 } = require('GenerationUtility/utility/objectUtility.js');
 
@@ -22,12 +23,14 @@ const generatedLayouts = require('tests/importTestData.js');
 const { ImportFeature }	= require('GenerationUtility/modules/importLayout.js');
 
 function LayoutHandler(omap, splineOps, blockOps, probe){
+	/** @type {CUFileSubsystem} */
+	const fileSubsystem = GUBlueprintLibrary.GetEngineSubsystem(CUFileSubsystem);
+
 	//fill a field with given density type for given polygon
 	function fillField({
 		map = new ArrayMap(),
 		polygon = [],
 		fieldTypes = [omap.S_Sunflower_sjrjK_Var7_lod1, omap.S_Sunflower_sjrjK_Var2_lod1, omap.S_Sunflower_sjrjK_Var6_lod1],
-		//fieldTypes = [omap.S_Sunflower_sjrjK_Var7_lod1],
 		seed = 'l33t',
 		densityOptions = {
 			numPoints:2000,
@@ -36,6 +39,9 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 		},
 		heightAlign = false,
 		densityType = 'random',
+		constrainToLand = true,
+		offsetTransform = new Transform(),
+		debugLineTrace = false,
 	}={}){
 		const densityTypes = {
 			'even': splineOps.generateEvenlySpacedPoints,
@@ -54,12 +60,14 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 
 			transform = splineOps.randRotateTransform(transform, {range:90,offset:45, randFunction:randR});
 
+			transform = Transform.ComposeTransforms(transform, offsetTransform);
+
 			if(heightAlign){
 				const location = transform.Translation;
 				let detailHit = {};	//we want the detail hit
-				const height = probe.lineTraceHeightAtLocation(location, {debugLineTrace:false, detailHit, surface});
+				const height = probe.lineTraceHeightAtLocation(location, {debugLineTrace, detailHit}); //surface
 
-				if(!detailHit.hitLandscape){
+				if(constrainToLand && !detailHit.hitLandscape && !detailHit.hitVoxel){
 					return;
 				}
 				transform.Translation.Z = height;
@@ -99,6 +107,7 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 		map = new ArrayMap(),
 		fenceTypes = [omap.SM_Fenc01_P1, omap.SM_Fence02_P2],
 		endTypes = [omap.SM_Fence01_End],
+		offsetTransform = new Transform(),
 		overlap = 0.15,
 		endCapFraction = 0.3,
 		seed = 'l33t'
@@ -136,7 +145,13 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 				if((accumulatedLength-(segmentLength*endCapFraction))>lineLength){
 					fenceType = randomItem(endTypes, randF);
 				}
-				map.addValue(fenceType, makeTransform({loc:pointOffset, rot:lookAtRotation}).ComposeTransforms(fromTransform));
+
+				let transform = makeTransform({loc:pointOffset, rot:lookAtRotation}).ComposeTransforms(fromTransform);
+
+				//adjust by offset
+				transform = Transform.ComposeTransforms(transform, offsetTransform);
+
+				map.addValue(fenceType, transform);
 			}
 		}
 
@@ -154,12 +169,13 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 			numPoints: 1000,
 			spacing: 100
 		},
+		offsetTransform = new Transform(),
 		fenceTypes = [omap.SM_Fenc01_P1, omap.SM_Fence02_P2],
 		fieldTypes = [omap.S_Sunflower_sjrjK_Var7_lod1, omap.S_Sunflower_sjrjK_Var2_lod1, omap.S_Sunflower_sjrjK_Var6_lod1],
 		endTypes = [omap.SM_Fence01_End],
 	}={}){
-		map = fillField({map, polygon, densityType, densityOptions, fieldTypes});
-		map = makeFence({map, polygon, fenceTypes, endTypes});
+		map = fillField({map, polygon, densityType, densityOptions, fieldTypes, offsetTransform});
+		map = makeFence({map, polygon, fenceTypes, endTypes, offsetTransform});
 		return map;
 	}
 
@@ -361,12 +377,13 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 		makeBuildings = true,
 		makeTrees = true,
 		makeRoadNetwork = false,
+		alignWithGround = false,	//not yet implement, but should align to the landscape
 		// makeRoadNetwork = true,
 		// makeFields = true,
 		makeFields = false,
 		debugPathingTest = false,
 		addPOI = true,
-		offset = {loc:{X:0, Y: 0}},
+		villageTransform = new Transform(),
 		scale = 100,
 		rotOffset = -90,
 		//type info
@@ -384,7 +401,7 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 					omap.TallHouseGreenV2Merged,
 					// omap.HouseYellowV2Merged,
 				],
-
+		layoutImportDirectory = 'Content/Saved/Villages',
 		layoutImportName = 'villageForestTree',
 
 		tavernTypes = [
@@ -394,23 +411,29 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 			//omap.TallHouseGreenV2Merged,
 			omap.BigTavernV2Merged,
 		],
-
+		logGeneration = false,
 		map = new ArrayMap(),
 		extra = {},	//used to pull out meta data like extra.houseTypeMap
 	} = {}){
 		const rand = randomStream(seed);
+		const dlog = logIfEnabled(logGeneration);
 
-		let layoutData = generatedLayouts[layoutImportName];
+		//adjust by village transform
+		function toWorldTransform(transform){
+			return Transform.ComposeTransforms(transform, villageTransform)
+		}
 
-		// layoutData = generatedLayouts.villageNisSpring;
-		// layoutData = generatedLayouts.villageForestTree;		//main village used for import
-		// layoutData = generatedLayouts.villageKilber;
-		// layoutData = generatedLayouts.villageGundreaSWood;
-		// layoutData = generatedLayouts.villageWheatridge;
-		
-		// layoutData = generatedLayouts.citySeafair;
-		// layoutData = generatedLayouts.cityBrightwood;
-		// layoutData = generatedLayouts.villageRyeshield;
+		const fullPath = fileSubsystem.ProjectDirectory() + layoutImportDirectory + '/' + layoutImportName + '.json';
+
+		const fileContents = fileSubsystem.ReadStringFromFile(fullPath);//.trim();
+
+		// console.log('read from ', fullPath, ' and got: <', fileContents, '>');
+
+		let layoutData = {};
+
+		if(fileContents){
+			layoutData = JSON.parse(fileContents);
+		}
 
 		//do the import
 		const villageFeatures = new ImportFeature(layoutData, scale);
@@ -424,7 +447,7 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 				if(feature.type == "MultiPoint"){
 					const transform = new Transform();
 					transform.Translation = data;
-					map.addValue(treeType, transform);
+					map.addValue(treeType, toWorldTransform(transform));
 				}
 
 			}, 'trees');
@@ -435,6 +458,7 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 		let endPoint = undefined;
 
 		let buildings = [];
+		let residentialBuildingCount = 0;
 		let houseTypeMap = new ArrayMap();
 
 		if(makeBuildings){
@@ -455,8 +479,8 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 					shopIndices = allIndices.sort((a, b) => a - b); //modified allindices contains remainder
 					pickedRandomPoi = true;
 					
-					logObj(innIndices, 'inn indices');
-					logObj(shopIndices, 'shop indices');
+					dlog('inn indices', innIndices);
+					dlog('shop indices', shopIndices);
 				}
 
 				let houseType = randomItem(houseTypes, rand);
@@ -466,12 +490,12 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 					let type = 'normal';
 
 					//first point whichever it is
-					if(!startPoint && buildings.length == 75){
-						//startPoint = center;
-					}
-					if(!endPoint && buildings.length == 60){
-						//endPoint = center;
-					}
+					// if(!startPoint && buildings.length == 75){
+					// 	//startPoint = center;
+					// }
+					// if(!endPoint && buildings.length == 60){
+					// 	//endPoint = center;
+					//}
 
 					if(addPOI){
 						// const area = quadrilateralArea(data[0], data[1], data[2], data[3])/ 10000;	//to meters
@@ -536,12 +560,19 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 					// const rotDeg = villageFeatures.calculateSquareRotation(data[0], data[1], data[2], data[3]);
 					const rotDeg = villageFeatures.calculateAngleOfVector(data[0], data[1]);
 
-					const transform = makeTransform({
+					let transform = makeTransform({
 						loc:center,
 						rot:{Yaw:rotDeg + rotOffset}
 					});
 
+					transform = toWorldTransform(transform);
+
 					buildings.push(transform);
+
+					if(type == 'normal'){
+						residentialBuildingCount++;
+					}
+
 					houseTypeMap.addValue(type, transform);
 
 					map.addValue(houseType, transform);			
@@ -549,12 +580,13 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 
 			}, 'buildings');
 
-			console.log(`made ${buildings.length} buildings.`);
+			dlog(`made ${buildings.length} buildings.`);
 
 			globalThis.dHouseMap = houseTypeMap;
 
 			//extra.buildingCenters = buildings;
 			extra.houseTypeMap = houseTypeMap;
+			extra.residentialBuildingsCount = residentialBuildingCount; 
 		}
 
 		if(makeRoads){
@@ -572,7 +604,8 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 					data.coordinates.forEach(coordinate=>{
 						n++;
 						if(!limitRoadLengths || (n<maxN)){
-							roadPoints.push(makeTransform({loc: coordinate}));
+							const transform = toWorldTransform(makeTransform({loc: coordinate}));
+							roadPoints.push(transform);
 						}
 					});
 
@@ -592,7 +625,7 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 
 			if(makeRoadNetwork)
 			{
-				console.log('found ', segments.length, ' road segments.');
+				dlog('found ', segments.length, ' road segments.');
 
 				//Attempt to make a road network for pathing
 				const graph = buildRoadNetwork(segments, 10);
@@ -651,7 +684,7 @@ function LayoutHandler(omap, splineOps, blockOps, probe){
 					map = makeFencedField({map, polygon:fieldPolygon, densityOptions : {
 						numPoints: 3000,
 						spacing: 100
-					}, densityType:'random', fieldTypes});
+					}, densityType:'random', fieldTypes, offsetTransform: villageTransform});
 					// }, densityType:'even', fieldTypes});
 				}
 

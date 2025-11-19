@@ -42,5 +42,9 @@
 			"Name": "RealtimeMeshComponent",
 			"Enabled": true
 		},
+		{
+			"Name": "Voxel",
+			"Enabled": true
+		}
 	]
 }

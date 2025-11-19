@@ -572,10 +572,18 @@ function JsPlanProcessor(esmActor, timers, {
         loggingEnabled=false,
         groupMeshKey=undefined
     }={}){
+    
+    //loggingEnabled = true;
+
     const dlog = logIfEnabled(loggingEnabled);
 
     if(!scheduleTrack){
+        /** @type {EntityPlanTrack} */
         scheduleTrack = esmActor.PlanningSystem.GetScheduleTrack();
+        scheduleTrack.SetESMLink(esmActor);
+
+        console.log('e', esmActor.GetUniqueID(), 'p',esmActor.PlanningSystem.GetUniqueID(), 's', scheduleTrack.GetUniqueID());
+        console.log(esmActor.GetName(), 'Schedule obtained with id:', scheduleTrack.GetUniqueID());
     }
 
     function setupProcessingLinks(){
@@ -589,7 +597,7 @@ function JsPlanProcessor(esmActor, timers, {
         //Link next and cancelled actions
         scheduleTrack.DefaultPlanProcessor.OnNextAction = (wrapper, entityId)=>{
             tryLog(()=>{
-                dlog('OnNextAction, id: ', entityId);
+                dlog('OnNextAction, id: ', entityId, 'esm: ', esmActor.GetName(), 'track: ', scheduleTrack.GetName());
                 //console.log('got action: ', wrapper);
                 //logObj(action, 'action def');
 
