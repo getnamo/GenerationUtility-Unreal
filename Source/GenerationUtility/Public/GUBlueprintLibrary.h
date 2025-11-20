@@ -14,10 +14,10 @@ class GENERATIONUTILITY_API UGUBlueprintLibrary : public UBlueprintFunctionLibra
 	GENERATED_BODY()
 	
     //convenience function to get engine subsystem in js
-	UFUNCTION(BlueprintCallable, Category = WRCoreUtility)
+	UFUNCTION(BlueprintCallable, Category = GUCoreUtility)
 	static USubsystem* GetEngineSubsystem(UClass* Class);
 
     //convenience function to get world subsystem in js
-	UFUNCTION(BlueprintCallable, Category = WRCoreUtility, meta = (WorldContext = "WorldContextObject"))
+	UFUNCTION(BlueprintCallable, Category = GUCoreUtility, meta = (WorldContext = "WorldContextObject"))
 	static USubsystem* GetWorldSubsystem(UClass* Class, UObject* WorldContextObject);
 };

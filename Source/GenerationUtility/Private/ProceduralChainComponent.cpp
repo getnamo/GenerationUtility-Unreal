@@ -38,7 +38,7 @@ void UProceduralChainComponent::BeginPlay()
 	if (bListenForJsReload)
 	{
 		FGESEventContext Context;
-		Context.Domain = TEXT("WaywardProcedural");
+		Context.Domain = TEXT("Procedural");
 		Context.Event = TEXT("JsReloaded");
 		Context.WorldContext = this;
 		FGESHandler::DefaultHandler()->AddLambdaListener(Context, [this]

@@ -351,7 +351,7 @@ void UProcGeneratorChain::SetActorValue(UPGContextDataObject* Data, const FStrin
 void UProcGeneratorChain::RequestJsChainByNameLambdaCallback(const FString& Name, TFunction<void(UProcGeneratorChain*)> ReceivingLambda)
 {
 	FGESEventContext ReplyContext;
-	ReplyContext.Domain = TEXT("WaywardProcedural");
+	ReplyContext.Domain = TEXT("Procedural");
 	ReplyContext.Event = TEXT("RequestJsCallback"); //unique id? shouldn't need it should call back on same thread immediately
 	ReplyContext.WorldContext = this;
 
