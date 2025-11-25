@@ -4,11 +4,13 @@
 
 const { logObj } = require('GenerationUtility/utility/objectUtility.js');
 
-function HotReload(startingPrepend = ''){
+function HotReload({
+	prepend = '',
+	postpend = '_C'
+}={}){
 	let modules = {};
 	let touched = {};
 	let chains = {};
-	let prepend = startingPrepend;
 
 	function setFolder(inPrepend){
 		prepend = inPrepend;
@@ -22,7 +24,7 @@ function HotReload(startingPrepend = ''){
 
 		console.log(`Importing module: <${fileName}>`);
 
-		const NewModule_C  = require(fileName)[name + '_C'];
+		const NewModule_C  = require(fileName)[name + postpend];
 		modules[name] = NewModule_C;
 	}
 
@@ -83,4 +85,4 @@ function HotReload(startingPrepend = ''){
 	});
 }
 
-exports.hotReload = new HotReload();
+exports.HotReload = HotReload;
