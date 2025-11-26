@@ -8,42 +8,46 @@ function HotReload({
 	prepend = '',
 	postpend = '_C'
 }={}){
-	let modules = {};
+	let classes = {};
 	let touched = {};
-	let chains = {};
+	let objects = {};
 
 	function setFolder(inPrepend){
 		prepend = inPrepend;
 	}
 
-	/* Assumes a few conventions to be able to
-	* automate these imports. PascalCase module name.
-	*/
-	function reloadModule(name){
+	function purgeAndGc(){
+        purge_modules();
+		gc();
+    }
+
+
+	//module == class
+	function importModule(name){
 		const fileName = prepend + name[0].toLowerCase() + name.substring(1) + '.js';
 
 		console.log(`Importing module: <${fileName}>`);
 
 		const NewModule_C  = require(fileName)[name + postpend];
-		modules[name] = NewModule_C;
+		classes[name] = NewModule_C;
 	}
 
 	//any module that has been accessed via 'find' is in this list
 	function reloadTouched(){
 		for(let name in touched) {
-			reloadModule(name);
+			importModule(name);
 		}
 		resetTouched();
 	}
 
 	//used to do additional js cleanup on hotreload
-	function hotReloadCleanup(){
-		Object.keys(chains).forEach(key=>{
-			const chain = chains[key];
+	function cleanupModules(){
+		Object.keys(objects).forEach(key=>{
+			const object = objects[key];
 
-			if(chain.OnCleanupRequest){
-				console.warn('OnCleanupRequest called for ', chain);
-				chain.OnCleanupRequest(chain.ContextData);
+			if(object.OnCleanupRequest){
+				console.warn('OnCleanupRequest called for ', object);
+				object.OnCleanupRequest(object.ContextData);
 			}
 		});
 	}
@@ -51,34 +55,36 @@ function HotReload({
 	//manual reset
 	function resetTouched(){
 		touched = {};
-		chains = {};
+		objects = {};
 	}
 
-	function findTouchedModule(name){
-		if(chains[name]){
-			return chains[name];
+	//this will also add it to the touched list
+	function acquireModule(name){
+		if(objects[name]){
+			return objects[name];
 		}
 
 		touched[name] = name;
-		chains[name] = new modules[name]();
-		return chains[name];
+		objects[name] = new classes[name]();
+		return objects[name];
 	}
 
 	function chainExists(name){
-		return chains[name] != undefined;
+		return objects[name] != undefined;
 	}
 
 	function initialImportList(list){
-		list.forEach(name => reloadModule(name));
+		list.forEach(name => importModule(name));
 		resetTouched();
 	}
 
 	return Object.freeze({
+		purgeAndGc,
 		setFolder,
-		reloadModule,
+		importModule,
 		chainExists,
-		hotReloadCleanup,
-		findTouchedModule,
+		cleanupModules,
+		acquireModule,
 		reloadTouched,
 		resetTouched,
 		initialImportList
